@@ -1,7 +1,17 @@
 import { createContext, useEffect, useCallback, useReducer } from 'react';
-import { AxiosError } from 'axios';
-import { customFetch } from '../utils';
 import { City } from '../types';
+import { sampleCities } from '../data/cities';
+
+const STORAGE_KEY = 'worldwise-cities';
+
+const loadCities = (): City[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? (JSON.parse(saved) as City[]) : sampleCities;
+  } catch {
+    return sampleCities;
+  }
+};
 
 // Cities Context
 type CitiesContextType = {
@@ -9,7 +19,7 @@ type CitiesContextType = {
   isLoading: boolean;
   error: string | null;
   currentCity: City | null;
-  getCity: (id: number) => Promise<void>;
+  getCity: (id: number) => void;
   createCity: (city: Omit<City, 'id'>) => Promise<void>;
   deleteCity: (id: number) => Promise<void>;
 };
@@ -112,85 +122,40 @@ export const CitiesProvider = ({ children }: CitiesProviderProps) => {
     initialState
   );
 
-  // Fetch Cities
+  // Load Cities (from localStorage, falling back to the sample trips)
   useEffect(() => {
-    const fetchCities = async () => {
-      dispatch({ type: 'loading' });
-      try {
-        const { data } = await customFetch('/cities.json');
-        dispatch({ type: 'cities/loaded', payload: data });
-      } catch (err) {
-        if (err instanceof AxiosError || err instanceof Error)
-          dispatch({ type: 'rejected', payload: err.message });
-        else
-          dispatch({
-            type: 'rejected',
-            payload: 'Something went wrong, please try again',
-          });
-      }
-    };
-    fetchCities();
+    dispatch({ type: 'cities/loaded', payload: loadCities() });
   }, []);
+
+  // Persist Cities
+  useEffect(() => {
+    if (isLoading) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cities));
+    } catch {
+      // Storage unavailable (e.g. private mode) - keep data in memory only
+    }
+  }, [cities, isLoading]);
 
   // Get City
   const getCity = useCallback(
-    async (id: number) => {
+    (id: number) => {
       if (id === currentCity?.id) return;
-
-      dispatch({ type: 'loading' });
-      try {
-        const { data } = await customFetch(`/cities.json`);
-        const city = (data as City[]).find((city) => city.id === id);
-        if (city) dispatch({ type: 'city/loaded', payload: city });
-      } catch (err) {
-        if (err instanceof AxiosError || err instanceof Error)
-          dispatch({ type: 'rejected', payload: err.message });
-        else
-          dispatch({
-            type: 'rejected',
-            payload: 'Something went wrong, please try again',
-          });
-      }
+      const city = cities.find((city) => city.id === id);
+      if (city) dispatch({ type: 'city/loaded', payload: city });
+      else dispatch({ type: 'rejected', payload: 'City not found' });
     },
-    [currentCity?.id]
+    [currentCity?.id, cities]
   );
 
   // Create City
   const createCity = async (city: Omit<City, 'id'>) => {
-    dispatch({ type: 'loading' });
-    try {
-      // const { data } = await customFetch.post(`/cities.json`, city);
-      // await customFetch.post(`/cities.json`, city);
-      dispatch({
-        type: 'city/created',
-        payload: { ...city, id: Math.random() },
-      });
-    } catch (err) {
-      if (err instanceof AxiosError || err instanceof Error)
-        dispatch({ type: 'rejected', payload: err.message });
-      else
-        dispatch({
-          type: 'rejected',
-          payload: 'Something went wrong, please try again',
-        });
-    }
+    dispatch({ type: 'city/created', payload: { ...city, id: Date.now() } });
   };
 
   // Delete City
   const deleteCity = async (id: number) => {
-    dispatch({ type: 'loading' });
-    try {
-      // await customFetch.delete(`/cities.json/${id}`);
-      dispatch({ type: 'city/deleted', payload: id });
-    } catch (err) {
-      if (err instanceof AxiosError || err instanceof Error)
-        dispatch({ type: 'rejected', payload: err.message });
-      else
-        dispatch({
-          type: 'rejected',
-          payload: 'Something went wrong, please try again',
-        });
-    }
+    dispatch({ type: 'city/deleted', payload: id });
   };
 
   return (
