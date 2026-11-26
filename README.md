@@ -2,7 +2,7 @@
 
 A travel tracker where you click anywhere on a world map to log the cities you've visited, with the date and your notes. Built with **React 18**, **TypeScript**, **React Router** and **Leaflet**.
 
-**Live demo:** _coming soon_ · Demo login: `jack@example.com` / `qwerty` (pre-filled)
+**Live demo:** [world-wise-rust-ten.vercel.app](https://world-wise-rust-ten.vercel.app) · Demo login: `jack@example.com` / `qwerty` (pre-filled)
 
 ## Features
 
